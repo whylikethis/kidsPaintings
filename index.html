@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>אתר צביעה לילדים</title>
-
+<!-- 
 <style>
 body {
     margin: 0;
@@ -95,7 +95,7 @@ h1 {
 }
 
 
-</style>
+</style> -->
 
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet"/>
 
@@ -210,6 +210,38 @@ button:hover {
     h1 { font-size: clamp(2rem, 8vw, 3rem); }
     button { padding: 6px 12px; font-size: 0.9rem; }
 }
+
+.tool-btn.active {
+    background: #ff6b6b;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    transform: scale(1.08);
+}
+
+
+#workspace {
+        flex-direction: column;
+        align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+}
+
+#sidePanel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    min-width: 140px;
+}
+@media (max-width: 700px) {
+    #workspace {
+
+
+            display: flex;
+    align-items: flex-start;
+    }
+}
+
 </style>
 
 
@@ -238,21 +270,60 @@ button:hover {
 </div>
 
 <div id="editor">
+
+
+<div id="workspace">
+    <div>
+        <canvas id="canvas"></canvas>
+    </div>
+
+
+    <div id="sidePanel" >
+        <div id="colors"></div>
+
+        <div id="secendery-controls">
+            <button id="fillBtn" class="tool-btn">🪣 דלי</button>
+            <button id="brushBtn" class="tool-btn">🖌️ מברשת</button>
+
+            <input type="range" min="3" max="25" value="8"
+                oninput="brushSize=this.value">
+        </div>
+
+
+    </div>
+</div>
+
+        <div id="controls">
+            <button onclick="undo()">Undo</button>
+            <button onclick="clearCanvas()">נקה</button>
+            <button onclick="saveImage()">שמור</button>
+            <button onclick="backToGallery()">חזרה לגלריה</button>
+        </div>
+
+
+
+
+<!-- 
     <canvas id="canvas"></canvas>
 
     <div id="colors"></div>
+
+    <button id="fillBtn">🪣 דלי</button>
+    <button id="brushBtn">🖌️ מברשת</button>
+
+    <input type="range" min="3" max="25" value="8"    oninput="brushSize=this.value">
 
     <div id="controls">
         <button onclick="undo()">Undo</button>
         <button onclick="clearCanvas()">נקה</button>
         <button onclick="saveImage()">שמור</button>
         <button onclick="backToGallery()">חזרה לגלריה</button>
-    </div>
+    </div> -->
 </div>
 
 <script>
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d",{ willReadFrequently: true });
 const gallery = document.getElementById("gallery");
 const editor = document.getElementById("editor");
 const colorsDiv = document.getElementById("colors");
@@ -268,6 +339,14 @@ const palette = [
 ];
 //"#f0f"
 
+let mode = "fill"; // fill | brush
+let drawing = false;
+let brushSize = 8; // אפשר לשנות
+let brushImageData = null;
+let brushData = null;
+let needsRender = false;
+let currentColor = { r: 255, g: 0, b: 0 }; // ברירת מחדל אדום
+
 palette.forEach(color=>{
     const div=document.createElement("div");
     div.className="color";
@@ -276,6 +355,11 @@ palette.forEach(color=>{
         document.querySelectorAll(".color").forEach(c=>c.classList.remove("selected"));
         div.classList.add("selected");
         selectedColor=hexToRgba(color);
+        currentColor = {
+            r: selectedColor[0],
+            g: selectedColor[1],
+            b: selectedColor[2]
+        };
     };
     colorsDiv.appendChild(div);
 });
@@ -312,16 +396,183 @@ function getMousePos(evt){
     };
 }
 
-canvas.addEventListener("click",e=>{
+// canvas.addEventListener("click",e=>{
+//     if(mode !== "fill") return;   // ← זה הקריטי
+
+//     const pos=getMousePos(e);
+//     floodFill(pos.x,pos.y,selectedColor);
+// });
+
+canvas.addEventListener("touchstart",e=>{
+    if(mode !== "fill") return;   // ← גם פה
+    e.preventDefault();
+
     const pos=getMousePos(e);
     floodFill(pos.x,pos.y,selectedColor);
 });
 
-canvas.addEventListener("touchstart",e=>{
-    e.preventDefault();
-    const pos=getMousePos(e);
-    floodFill(pos.x,pos.y,selectedColor);
-});
+
+canvas.addEventListener("pointerdown", handlePointerDown);
+canvas.addEventListener("pointermove", handlePointerMove);
+canvas.addEventListener("pointerup", stopDraw);
+canvas.addEventListener("pointerleave", stopDraw);
+
+
+function startDraw(e){
+    if(mode !== "brush") return;
+
+    drawing = true;
+
+    brushImageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    brushData = brushImageData.data;
+}
+
+function stopDraw(){
+    if(mode === "brush" && drawing){
+        saveState(); // שומר את הציור ב-history
+    }
+    drawing = false;
+    brushImageData = null;
+    brushData = null;
+}
+
+
+function moveDraw(e){
+    if(!drawing || mode !== "brush") return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const x = Math.floor((clientX - rect.left) * canvas.width / rect.width);
+    const y = Math.floor((clientY - rect.top) * canvas.height / rect.height);
+
+    paintBrush(x,y);
+
+    if(!needsRender){
+        needsRender = true;
+        requestAnimationFrame(renderBrush);
+    }
+}
+
+function paintBrush(cx, cy){
+
+    for(let y=-brushSize; y<=brushSize; y++){
+        for(let x=-brushSize; x<=brushSize; x++){
+
+            if(x*x + y*y > brushSize*brushSize) continue;
+
+            const px = cx + x;
+            const py = cy + y;
+
+            if(px<0 || py<0 || px>=canvas.width || py>=canvas.height) continue;
+
+            const index = (py * canvas.width + px) * 4;
+
+            const r = brushData[index];
+            const g = brushData[index+1];
+            const b = brushData[index+2];
+
+            // גבול שחור – לא לצבוע
+            if(r < 40 && g < 40 && b < 40) continue;
+
+            brushData[index]   = currentColor.r;
+            brushData[index+1] = currentColor.g;
+            brushData[index+2] = currentColor.b;
+        }
+    }
+}
+
+
+function handlePointerDown(e){
+    const pos = getMousePos(e);
+
+    if(mode === "fill"){
+        floodFill(pos.x,pos.y,selectedColor);
+        return;
+    }
+
+    if(mode === "brush"){
+        drawing = true;
+        brushImageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        brushData = brushImageData.data;
+
+        // עדכון הצבע הנוכחי
+        currentColor = { r: selectedColor[0], g: selectedColor[1], b: selectedColor[2] };
+
+        paintBrush(pos.x,pos.y);
+        renderBrush();
+    }
+}
+
+function handlePointerMove(e){
+    if(!drawing || mode !== "brush") return;
+
+    const pos = getMousePos(e);
+    paintBrush(pos.x,pos.y);
+
+    if(!needsRender){
+        needsRender = true;
+        requestAnimationFrame(renderBrush);
+    }
+}
+
+
+
+
+function renderBrush(){
+    if(!brushImageData) return;   // ← הגנה קריטית
+    ctx.putImageData(brushImageData,0,0);
+    needsRender = false;
+}
+
+// document.querySelectorAll(".color").forEach(el => {
+//     el.addEventListener("click", function(){
+
+//         const hex = this.dataset.color;
+
+//         currentColor = hexToRgba(hex);
+
+//         document.querySelectorAll(".color")
+//             .forEach(c => c.classList.remove("selected"));
+
+//         this.classList.add("selected");
+//     });
+// });
+
+// canvas.addEventListener("mousemove", (e) => {
+//     if (!drawing || mode !== "brush") return;
+
+//     const rect = canvas.getBoundingClientRect();
+//     const x = Math.floor((e.clientX - rect.left) * canvas.width / rect.width);
+//     const y = Math.floor((e.clientY - rect.top) * canvas.height / rect.height);
+
+//     paintPixel(x, y);
+// });
+
+
+function paintPixel(x, y) {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    const index = (y * canvas.width + x) * 4;
+
+    const r = data[index];
+    const g = data[index + 1];
+    const b = data[index + 2];
+
+    // אם זה שחור (גבול) — לא לצבוע
+    if (r < 40 && g < 40 && b < 40) return;
+
+    data[index] = currentColor.r;
+    data[index + 1] = currentColor.g;
+    data[index + 2] = currentColor.b;
+
+    ctx.putImageData(imageData, 0, 0);
+}
+
+
+
 
 
 
@@ -428,6 +679,36 @@ function backToGallery(){
     editor.style.display="none";
     gallery.style.display="flex";
 }
+
+
+const fillBtn = document.getElementById("fillBtn");
+const brushBtn = document.getElementById("brushBtn");
+
+fillBtn.classList.add("active");
+
+fillBtn.onclick = () => {
+    mode = "fill";
+    drawing = false;            // ← חשוב
+    brushImageData = null;      // ← חשוב
+    brushData = null;
+
+    fillBtn.classList.add("active");
+    brushBtn.classList.remove("active");
+};
+
+brushBtn.onclick = () => {
+    mode = "brush";
+    drawing = false;            // ← חשוב
+
+    brushBtn.classList.add("active");
+    fillBtn.classList.remove("active");
+};
+
+
+
+
+
+
 </script>
 
 </body>
