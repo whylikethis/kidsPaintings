@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="white"/>
+  <!-- Stem -->
+  <path d="M200,280 Q200,340 200,370" fill="none" stroke="black" stroke-width="10" stroke-linecap="round"/>
+  <!-- Left leaf -->
+  <path d="M200,320 Q155,290 140,310 Q155,340 200,335 Z" fill="white" stroke="black" stroke-width="7" stroke-linejoin="round"/>
+  <!-- Right leaf -->
+  <path d="M200,310 Q245,280 260,300 Q245,330 200,325 Z" fill="white" stroke="black" stroke-width="7" stroke-linejoin="round"/>
+  <!-- Petals (8 petals) -->
+  <ellipse cx="200" cy="140" rx="28" ry="55" fill="white" stroke="black" stroke-width="7"/>
+  <ellipse cx="200" cy="140" rx="28" ry="55" fill="white" stroke="black" stroke-width="7" transform="rotate(45, 200, 200)"/>
+  <ellipse cx="200" cy="140" rx="28" ry="55" fill="white" stroke="black" stroke-width="7" transform="rotate(90, 200, 200)"/>
+  <ellipse cx="200" cy="140" rx="28" ry="55" fill="white" stroke="black" stroke-width="7" transform="rotate(135, 200, 200)"/>
+  <ellipse cx="200" cy="140" rx="28" ry="55" fill="white" stroke="black" stroke-width="7" transform="rotate(180, 200, 200)"/>
+  <ellipse cx="200" cy="140" rx="28" ry="55" fill="white" stroke="black" stroke-width="7" transform="rotate(225, 200, 200)"/>
+  <ellipse cx="200" cy="140" rx="28" ry="55" fill="white" stroke="black" stroke-width="7" transform="rotate(270, 200, 200)"/>
+  <ellipse cx="200" cy="140" rx="28" ry="55" fill="white" stroke="black" stroke-width="7" transform="rotate(315, 200, 200)"/>
+  <!-- Center -->
+  <circle cx="200" cy="200" r="42" fill="white" stroke="black" stroke-width="8"/>
+  <!-- Center dots -->
+  <circle cx="200" cy="190" r="6" fill="black"/>
+  <circle cx="188" cy="208" r="6" fill="black"/>
+  <circle cx="212" cy="208" r="6" fill="black"/>
+</svg>
